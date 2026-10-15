@@ -1,123 +1,72 @@
-import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import './App.css'
-import PointForm from './PointForm.jsx'
-import UserList from './UserList.jsx'
-import PointGraph from './PointGraph.jsx'
-import PointHistory from './PointHistory.jsx'
 
 function App() {
-  const navigate = useNavigate()
-  const [users, setUsers] = useState([
-    {id: 1, name: '홍길동', point: 8500},
-    {id: 2, name: '김철수', point: 12000},
-    {id: 3, name: '이영희', point: 5500}])
-  const [showGraph, setShowGraph] = useState(false)
-  const [selectedId, setSelectedId] = useState('1')
-  const [pointType, setPointType] = useState('add')
-  const [amount, setAmount] = useState('')
-  const [message, setMessage] = useState('')
-  const [history, setHistory] = useState([])
-  const isLogin = localStorage.getItem('isLogin')
-  const role = localStorage.getItem('role')
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
-  if (isLogin !== 'true' || role !== 'admin') {
-    return <Navigate to="/" replace />
-  }
-  const points = users.map((user) => user.point);
-  const maxPoint = Math.max(Math.max.apply(null, points), 1);
-  const handlePointUpdate = () => {
-    const pointValue = Number(amount)
-    const userId = Number(selectedId)
-    if (amount === '' || pointValue <= 0) {
-      setMessage('1 이상의 포인트를 입력하세요.')
-      return   // 함수 실행 종료
-    }
+  useEffect(() => {
+    fetch('https://jsonplaceholder.typicode.com/posts')
+      .then((response) => response.json())
+      .then((data) => {
+        setPosts(data)
+        setLoading(false)
+      })
+  }, [])
 
-    const selectedUser = users.find(
-      (user) => user.id === userId
-    )
-
-
-    if (!selectedUser) {
-      setMessage('사용자를 찾을 수 없습니다.')
-      return
-    }
-
-    if (pointType === 'subtract' && pointValue > selectedUser.point) {
-      setMessage('현재 보유 포인트보다 많이 차감할 수 없습니다.')
-      return
-    }
-
-    const updatedUsers = users.map((user) => {
-
-      if (user.id !== userId) {
-        return user
-      }
-      let newPoint
-
-      if (pointType === 'add') {
-        newPoint = user.point + pointValue
-      } else {
-        newPoint = user.point - pointValue
-      }
-
-      const updatedUser = Object.assign({}, user, {point: newPoint})
-
-      return updatedUser
-    })
-
-    setUsers(updatedUsers)
-
-    const newHistory = {
-      id: Date.now(),
-      name: selectedUser.name,
-      type: pointType,
-      point: pointValue
-    }
-    const updatedHistory = [newHistory].concat(history)
-    // 변경된 이력 배열 저장
-    setHistory(updatedHistory)
-    // 처리 완료
-    setMessage('포인트가 정상적으로 반영되었습니다.')
-    // 입력창 초기화
-    setAmount('')
-  }
-  // 8. 로그아웃 함수
-  const handleLogout = () => {
-    localStorage.removeItem('isLogin')
-    localStorage.removeItem('role')
-    navigate('/')
-  }
-
-  // 9. 화면 출력
-  return (
-    <main className="admin-page">
-      <h1>관리자 포인트 관리</h1>
-      {/* 포인트 지급 / 차감 */}
-      <PointForm users={users} selectedId={selectedId}
-        setSelectedId={setSelectedId} pointType={pointType}
-        setPointType={setPointType} amount={amount}
-        setAmount={setAmount} message={message}
-        handlePointUpdate={handlePointUpdate}/>
-      {}
-      <UserList users={users}/>
-      {}
-      <div className="button-area">
-        {}
-        <button onClick={() => setShowGraph(!showGraph)}>
-          {showGraph ? '그래프 닫기' : '그래프 보기'}
-        </button>
-        {}
-        <button onClick={handleLogout}>로그아웃</button>
-        </div>
-        {}
-        {}
-        {showGraph && (<PointGraph users={users} maxPoint={maxPoint}/>
-      )}
-      {}
-      <PointHistory history={history}/>
+  if (loading) {
+    return (
+      <main className="page">
+        <p>불러오는 중...</p>
       </main>
+    )
+  }
+
+  const filteredPosts = posts.filter((post) =>
+    post.title.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <main className="page">
+      <h1>React 게시판</h1>
+      
+      <div className="search-area">
+        <input
+          type="text"
+          placeholder="게시글 제목 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <p className="search-count">
+        검색 결과 : {filteredPosts.length}개
+      </p>
+
+      {filteredPosts.map((post) => (
+        <article
+          className={
+            search !== ''
+              ? 'post-card post-card-search'
+              : 'post-card'
+          }
+          key={post.id}
+        >
+          <span className="post-number">
+            게시글 #{post.id}
+          </span>
+          <h2>{post.title}</h2>
+          <p>{post.body}</p>
+        </article>
+      ))}
+
+      {filteredPosts.length === 0 && (
+        <p className="no-result">
+          검색 결과가 없습니다.
+        </p>
+      )}
+    </main>
   )
 }
 
